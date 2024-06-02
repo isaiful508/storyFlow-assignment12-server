@@ -6,7 +6,12 @@ require('dotenv').config();
 const port = process.env.port || 5000;
 
 //middleware
-app.use(cors());
+const corsOptions = {
+  origin: ['http://localhost:5173', 'http://localhost:5174'],
+  credentials: true,
+  optionSuccessStatus: 200,
+}
+app.use(cors(corsOptions));
 app.use(express.json());
 
 
@@ -26,10 +31,43 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
 
+    const userCollection = client.db('storyFlow').collection('users');
 
 
+    //post user in db
+    // app.post('/users', async (req, res) => {
+    //   const user = req.body;
+    //   console.log(user);
+     
+    //   const query = { email: user.email }
+    //   const existingUser = await userCollection.findOne(query);
+    //   if (existingUser) {
+    //     return res.send({ message: 'user already exists', insertedId: null })
+    //   }
+    //   const result = await userCollection.insertOne(user);
+    //   res.send(result)
+    // })
 
+    app.post('/users', async (req, res) => {
+      try {
+        const user = req.body;
+        console.log(user);
+    
+        const query = { email: user.email };
+        const existingUser = await userCollection.findOne(query);
+        if (existingUser) {
+          return res.send({ message: 'User already exists', insertedId: null });
+        }
+    
+        const result = await userCollection.insertOne(user);
+        res.send(result);
+      } catch (error) {
+        console.error('Error inserting user:', error);
+        res.status(500).send({ message: 'Internal Server Error', error });
+      }
+    });
 
+  
 
 
 
