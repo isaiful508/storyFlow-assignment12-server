@@ -33,6 +33,7 @@ async function run() {
 
     const userCollection = client.db('storyFlow').collection('users');
     const publishersCollection = client.db('storyFlow').collection('publishers');
+    const articlesCollection = client.db('storyFlow').collection('articles');
 
 
 
@@ -137,6 +138,20 @@ async function run() {
       res.send(result);
     })
 
+    //post article
+    app.post('/articles', async (req, res) => {
+      try {
+        const article = req.body;
+        console.log(article);
+
+        const result = await articlesCollection.insertOne(article);
+        res.send(result);
+        
+      } catch (error) {
+        console.error('Error inserting user:', error);
+        res.status(500).send({ message: 'Internal Server Error', error });
+      }
+    });
 
 
 
