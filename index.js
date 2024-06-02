@@ -1,4 +1,4 @@
-const { MongoClient, ServerApiVersion, ObjectId  } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const express = require('express');
 const app = express();
 const cors = require('cors');
@@ -32,6 +32,7 @@ async function run() {
     // await client.connect();
 
     const userCollection = client.db('storyFlow').collection('users');
+    const publishersCollection = client.db('storyFlow').collection('publishers');
 
 
 
@@ -56,13 +57,13 @@ async function run() {
       try {
         const user = req.body;
         // console.log(user);
-    
+
         const query = { email: user.email };
         const existingUser = await userCollection.findOne(query);
         if (existingUser) {
           return res.send({ message: 'User already exists', insertedId: null });
         }
-    
+
         const result = await userCollection.insertOne(user);
         res.send(result);
       } catch (error) {
@@ -71,49 +72,63 @@ async function run() {
       }
     });
 
-  //get user from database
-  app.get('/users', async (req, res) => {
+    //get user from database
+    app.get('/users', async (req, res) => {
 
-    const result = await userCollection.find().toArray()
-    res.send(result);
-  })
+      const result = await userCollection.find().toArray()
+      res.send(result);
+    })
 
- //make admin 
- app.patch('/users/admin/:id', async (req, res) => {
-  const id = req.params.id;
-  const filter = { _id: new ObjectId(id) }
-  const updatedDoc = {
-    $set: {
-      role: 'admin'
-    }
-  }
-
-
-  const result = await userCollection.updateOne(filter, updatedDoc);
-  res.send(result);
-
-})
-
-//search admin by email
-app.get('/users/admin/:email', async (req, res) => {
-  const email = req.params.email;
-
-  // if (email !== req.decoded.email) {
-  //   return res.status(403).send({ message: 'forbidden access' })
-  // }
-
-  const query = { email: email };
-  const user = await userCollection.findOne(query);
-  let admin = false;
-  if (user) {
-    admin = user?.role === 'admin';
-
-  }
-  res.send({ admin })
-
-})
+    //make admin 
+    app.patch('/users/admin/:id', async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) }
+      const updatedDoc = {
+        $set: {
+          role: 'admin'
+        }
+      }
 
 
+      const result = await userCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+
+    })
+
+    //search admin by email
+    app.get('/users/admin/:email', async (req, res) => {
+      const email = req.params.email;
+
+      // if (email !== req.decoded.email) {
+      //   return res.status(403).send({ message: 'forbidden access' })
+      // }
+
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      let admin = false;
+      if (user) {
+        admin = user?.role === 'admin';
+
+      }
+      res.send({ admin })
+
+    })
+
+
+    //post publisher
+    app.post('/publishers', async (req, res) => {
+      try {
+        const publisher = req.body;
+        // console.log(user);
+
+        const result = await publishersCollection.insertOne(publisher);
+        res.send(result);
+        
+      } catch (error) {
+        console.error('Error inserting user:', error);
+        res.status(500).send({ message: 'Internal Server Error', error });
+      }
+    });
 
 
 
@@ -121,7 +136,6 @@ app.get('/users/admin/:email', async (req, res) => {
 
 
 
-    
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
@@ -135,10 +149,10 @@ run().catch(console.dir);
 
 
 
-app.get('/', (req, res) =>{
-    res.send('Salam from stroy flow server')
+app.get('/', (req, res) => {
+  res.send('Salam from stroy flow server')
 })
 
-app.listen(port, ()=>{
-    console.log(`Story Flow is running on port ${port}`);
+app.listen(port, () => {
+  console.log(`Story Flow is running on port ${port}`);
 })
