@@ -124,7 +124,7 @@ async function run() {
 
         const result = await publishersCollection.insertOne(publisher);
         res.send(result);
-        
+
       } catch (error) {
         console.error('Error inserting user:', error);
         res.status(500).send({ message: 'Internal Server Error', error });
@@ -142,16 +142,24 @@ async function run() {
     app.post('/articles', async (req, res) => {
       try {
         const article = req.body;
+        article.postedDate = new Date();
         console.log(article);
 
         const result = await articlesCollection.insertOne(article);
         res.send(result);
-        
+
       } catch (error) {
         console.error('Error inserting user:', error);
         res.status(500).send({ message: 'Internal Server Error', error });
       }
     });
+
+    //get all articles
+    app.get('/articles', async (req, res) => {
+      const result = await articlesCollection.find().toArray()
+      res.send(result);
+
+    })
 
 
 
