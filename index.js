@@ -161,7 +161,40 @@ async function run() {
 
     })
 
+    //update article status
+    app.patch('/articles/:id/status', async (req, res) => {
+      try {
+        const { id } = req.params;
+        const { status } = req.body;
 
+        const result = await articlesCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: { status: status } }
+        );
+
+        res.send(result);
+      } catch (error) {
+        console.error('Error updating article status:', error);
+        res.status(500).send({ message: 'Internal Server Error', error });
+      }
+    });
+
+    // update premium
+
+    app.patch('/articles/:id/premium', async (req, res) => {
+      const { id } = req.params;
+      const { isPremium } = req.body;
+      try {
+        const result = await articlesCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: { isPremium: isPremium } }
+        );
+        res.send(result);
+      } catch (error) {
+        console.error('Error updating article premium status:', error);
+        res.status(500).send({ message: 'Internal Server Error', error });
+      }
+    });
 
 
 
