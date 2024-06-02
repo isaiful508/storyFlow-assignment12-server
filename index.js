@@ -130,6 +130,13 @@ async function run() {
       }
     });
 
+    //get publisher
+    app.get('/publishers', async (req, res) => {
+
+      const result = await publishersCollection.find().toArray()
+      res.send(result);
+    })
+
 
 
 
