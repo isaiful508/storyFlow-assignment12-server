@@ -196,6 +196,23 @@ async function run() {
       }
     });
 
+    //delete article 
+
+    app.delete('/articles/:id', async (req, res) => {
+      try {
+        const { id } = req.params;
+        const result = await articlesCollection.deleteOne({ _id: new ObjectId(id) });
+
+        if (result.deletedCount === 1) {
+          res.send({ message: 'Article deleted successfully', deletedCount: 1 });
+        } else {
+          res.status(404).send({ message: 'Article not found', deletedCount: 0 });
+        }
+      } catch (error) {
+        console.error('Error deleting article:', error);
+        res.status(500).send({ message: 'Internal Server Error', error });
+      }
+    });
 
 
 
