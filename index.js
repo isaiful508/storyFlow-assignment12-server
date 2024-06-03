@@ -263,6 +263,40 @@ app.patch('/articles/:id/view', async (req, res) => {
   }
 });
 
+// get  to search articles by title
+
+app.get('/articles/search/:title', async (req, res) => {
+  try {
+      const { title } = req.params;
+      const query = { title: { $regex: title, $options: 'i' } }; // Case-insensitive search
+      const articles = await articlesCollection.find(query).toArray();
+      res.send(articles);
+  } catch (error) {
+      console.error('Error searching articles by title:', error);
+      res.status(500).send({ message: 'Internal Server Error', error });
+  }
+});
+
+//filter by tags and publisher
+app.get('/articles/filter', async (req, res) => {
+  try {
+    const { publisher, tags } = req.query;
+    const filter = {};
+    if (publisher) {
+      filter.publisher = publisher;
+    }
+    if (tags) {
+      filter.tags = { $in: tags.split(',') };
+    }
+    const articles = await articlesCollection.find(filter).toArray();
+    res.send(articles);
+  } catch (error) {
+    console.error('Error filtering articles:', error);
+    res.status(500).send({ message: 'Internal Server Error', error });
+  }
+});
+
+
 
 
     // Send a ping to confirm a successful connection
