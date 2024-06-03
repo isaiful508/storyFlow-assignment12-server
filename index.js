@@ -1,4 +1,4 @@
-const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId, ConnectionPoolClosedEvent } = require('mongodb');
 const express = require('express');
 const app = express();
 const cors = require('cors');
@@ -196,23 +196,72 @@ async function run() {
       }
     });
 
+
+
     //delete article 
+    
 
     app.delete('/articles/:id', async (req, res) => {
       try {
-        const { id } = req.params;
-        const result = await articlesCollection.deleteOne({ _id: new ObjectId(id) });
-
-        if (result.deletedCount === 1) {
-          res.send({ message: 'Article deleted successfully', deletedCount: 1 });
-        } else {
-          res.status(404).send({ message: 'Article not found', deletedCount: 0 });
-        }
+          const { id } = req.params;
+          const result = await articlesCollection.deleteOne({ _id: new ObjectId(id) });
+  
+          if (result.deletedCount === 1) {
+              res.send({ message: 'Article deleted successfully', deletedCount: 1 });
+          } else {
+              res.status(404).send({ message: 'Article not found', deletedCount: 0 });
+          }
       } catch (error) {
-        console.error('Error deleting article:', error);
-        res.status(500).send({ message: 'Internal Server Error', error });
+          console.error('Error deleting article:', error);
+          res.status(500).send({ message: 'Internal Server Error', error });
       }
-    });
+  });
+
+  //articles get by status
+  app.get('/articles/status/:status', async (req, res) => {
+    try {
+        const { status } = req.params;
+        const articles = await articlesCollection.find({ status }).toArray();
+        res.send(articles);
+    } catch (error) {
+        console.error('Error fetching articles by status:', error);
+        res.status(500).send({ message: 'Internal Server Error', error });
+    }
+});
+
+//get article by id
+app.get('/articles/:id', async (req, res) => {
+  try {
+      const { id } = req.params;
+      const article = await articlesCollection.findOne({ _id: new ObjectId(id) });
+     
+      if (!article) {
+          return res.status(404).send({ message: 'Article not found' });
+      }
+      res.send(article);
+  } catch (error) {
+      console.error('Error fetching article:', error);
+      res.status(500).send({ message: 'Internal Server Error', error });
+  }
+});
+
+//update by view count
+app.patch('/articles/:id/view', async (req, res) => {
+  try {
+      const { id } = req.params;
+      const result = await articlesCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $inc: { views: 1 } }
+      );
+      if (result.matchedCount === 0) {
+          return res.status(404).send({ message: 'Article not found' });
+      }
+      res.send({ message: 'View count incremented' });
+  } catch (error) {
+      console.error('Error incrementing view count:', error);
+      res.status(500).send({ message: 'Internal Server Error', error });
+  }
+});
 
 
 
