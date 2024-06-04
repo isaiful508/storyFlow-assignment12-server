@@ -1,4 +1,4 @@
-const { MongoClient, ServerApiVersion, ObjectId, ConnectionPoolClosedEvent } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId} = require('mongodb');
 const express = require('express');
 const app = express();
 const cors = require('cors');
@@ -277,24 +277,20 @@ app.get('/articles/search/:title', async (req, res) => {
   }
 });
 
-//filter by tags and publisher
-app.get('/articles/filter', async (req, res) => {
+
+//filetr by publisher
+
+app.get('/articles/publisher/:publisher', async (req, res) => {
   try {
-    const { publisher, tags } = req.query;
-    const filter = {};
-    if (publisher) {
-      filter.publisher = publisher;
-    }
-    if (tags) {
-      filter.tags = { $in: tags.split(',') };
-    }
-    const articles = await articlesCollection.find(filter).toArray();
-    res.send(articles);
+      const { publisher } = req.params;
+      const articles = await articlesCollection.find({ publisher }).toArray();
+      res.send(articles);
   } catch (error) {
-    console.error('Error filtering articles:', error);
-    res.status(500).send({ message: 'Internal Server Error', error });
+      console.error('Error filtering articles by publisher:', error);
+      res.status(500).send({ message: 'Internal Server Error', error });
   }
 });
+
 
 
 
