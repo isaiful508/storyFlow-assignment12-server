@@ -280,13 +280,32 @@ app.get('/articles/search/:title', async (req, res) => {
 
 //filetr by publisher
 
-app.get('/articles/publisher/:publisher', async (req, res) => {
+// app.get('/articles/publisher/:publisher', async (req, res) => {
+//   try {
+//       const { publisher } = req.params;
+//       const articles = await articlesCollection.find({ publisher }).toArray();
+//       res.send(articles);
+//   } catch (error) {
+//       console.error('Error filtering articles by publisher:', error);
+//       res.status(500).send({ message: 'Internal Server Error', error });
+//   }
+// });
+
+// Filter articles by publisher and tags
+app.get('/articles/filter', async (req, res) => {
   try {
-      const { publisher } = req.params;
-      const articles = await articlesCollection.find({ publisher }).toArray();
+      const { publisher, tags } = req.query;
+      let query = {};
+      if (publisher) {
+          query.publisher = publisher;
+      }
+      if (tags) {
+          query.tags = { $in: tags.split(",") }; // Assuming tags are stored as an array in your database
+      }
+      const articles = await articlesCollection.find(query).toArray();
       res.send(articles);
   } catch (error) {
-      console.error('Error filtering articles by publisher:', error);
+      console.error('Error filtering articles:', error);
       res.status(500).send({ message: 'Internal Server Error', error });
   }
 });
