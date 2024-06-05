@@ -1,4 +1,4 @@
-const { MongoClient, ServerApiVersion, ObjectId} = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const express = require('express');
 const app = express();
 const cors = require('cors');
@@ -143,7 +143,7 @@ async function run() {
       try {
         const article = req.body;
         article.postedDate = new Date();
-        console.log(article);
+        // console.log(article);
 
         const result = await articlesCollection.insertOne(article);
         res.send(result);
@@ -199,116 +199,140 @@ async function run() {
 
 
     //delete article 
-    
+
 
     app.delete('/articles/:id', async (req, res) => {
       try {
-          const { id } = req.params;
-          const result = await articlesCollection.deleteOne({ _id: new ObjectId(id) });
-  
-          if (result.deletedCount === 1) {
-              res.send({ message: 'Article deleted successfully', deletedCount: 1 });
-          } else {
-              res.status(404).send({ message: 'Article not found', deletedCount: 0 });
-          }
-      } catch (error) {
-          console.error('Error deleting article:', error);
-          res.status(500).send({ message: 'Internal Server Error', error });
-      }
-  });
+        const { id } = req.params;
+        const result = await articlesCollection.deleteOne({ _id: new ObjectId(id) });
 
-  //articles get by status
-  app.get('/articles/status/:status', async (req, res) => {
-    try {
+        if (result.deletedCount === 1) {
+          res.send({ message: 'Article deleted successfully', deletedCount: 1 });
+        } else {
+          res.status(404).send({ message: 'Article not found', deletedCount: 0 });
+        }
+      } catch (error) {
+        console.error('Error deleting article:', error);
+        res.status(500).send({ message: 'Internal Server Error', error });
+      }
+    });
+
+
+    //decline reason
+    app.patch('/articles/:id/declinedStatus', async (req, res) => {
+      try {
+        const id = req.params.id;
+        const { status, declinedReason } = req.body;
+        console.log(req.body);
+        const filter = { _id: new ObjectId(id) };
+        const updateDoc = { $set: { status } };
+        if (status === 'declined') {
+          updateDoc.$set.declinedReason = declinedReason;
+        }
+        const result = await articlesCollection.updateOne(filter, updateDoc);
+        res.send(result);
+      } catch (error) {
+        console.error('Error updating article status:', error);
+        res.status(500).send({ message: 'Internal Server Error', error });
+      }
+    });
+
+
+
+
+    //articles get by status
+    app.get('/articles/status/:status', async (req, res) => {
+      try {
         const { status } = req.params;
         const articles = await articlesCollection.find({ status }).toArray();
         res.send(articles);
-    } catch (error) {
+      } catch (error) {
         console.error('Error fetching articles by status:', error);
         res.status(500).send({ message: 'Internal Server Error', error });
-    }
-});
-
-//get article by id
-app.get('/articles/:id', async (req, res) => {
-  try {
-      const { id } = req.params;
-      const article = await articlesCollection.findOne({ _id: new ObjectId(id) });
-     
-      if (!article) {
-          return res.status(404).send({ message: 'Article not found' });
       }
-      res.send(article);
-  } catch (error) {
-      console.error('Error fetching article:', error);
-      res.status(500).send({ message: 'Internal Server Error', error });
-  }
-});
+    });
 
-//update by view count
-app.patch('/articles/:id/view', async (req, res) => {
-  try {
-      const { id } = req.params;
-      const result = await articlesCollection.updateOne(
+    //get article by id
+    app.get('/articles/:id', async (req, res) => {
+      try {
+        const { id } = req.params;
+        const article = await articlesCollection.findOne({ _id: new ObjectId(id) });
+
+        if (!article) {
+          return res.status(404).send({ message: 'Article not found' });
+        }
+        res.send(article);
+      } catch (error) {
+        console.error('Error fetching article:', error);
+        res.status(500).send({ message: 'Internal Server Error', error });
+      }
+    });
+
+    //update by view count
+    app.patch('/articles/:id/view', async (req, res) => {
+      try {
+        const { id } = req.params;
+        const result = await articlesCollection.updateOne(
           { _id: new ObjectId(id) },
           { $inc: { views: 1 } }
-      );
-      if (result.matchedCount === 0) {
+        );
+        if (result.matchedCount === 0) {
           return res.status(404).send({ message: 'Article not found' });
+        }
+        res.send({ message: 'View count incremented' });
+      } catch (error) {
+        console.error('Error incrementing view count:', error);
+        res.status(500).send({ message: 'Internal Server Error', error });
       }
-      res.send({ message: 'View count incremented' });
-  } catch (error) {
-      console.error('Error incrementing view count:', error);
-      res.status(500).send({ message: 'Internal Server Error', error });
-  }
-});
+    });
 
-// get  to search articles by title
+    // get  to search articles by title
 
-app.get('/articles/search/:title', async (req, res) => {
-  try {
-      const { title } = req.params;
-      const query = { title: { $regex: title, $options: 'i' } }; // Case-insensitive search
-      const articles = await articlesCollection.find(query).toArray();
-      res.send(articles);
-  } catch (error) {
-      console.error('Error searching articles by title:', error);
-      res.status(500).send({ message: 'Internal Server Error', error });
-  }
-});
+    app.get('/articles/search/:title', async (req, res) => {
+      try {
+        const { title } = req.params;
+        const query = { title: { $regex: title, $options: 'i' } }; // Case-insensitive search
+        const articles = await articlesCollection.find(query).toArray();
+        res.send(articles);
+      } catch (error) {
+        console.error('Error searching articles by title:', error);
+        res.status(500).send({ message: 'Internal Server Error', error });
+      }
+    });
 
 
-//filetr by publisher
+    //filetr by publisher
 
-// app.get('/articles/publisher/:publisher', async (req, res) => {
-//   try {
-//       const { publisher } = req.params;
-//       const articles = await articlesCollection.find({ publisher }).toArray();
-//       res.send(articles);
-//   } catch (error) {
-//       console.error('Error filtering articles by publisher:', error);
-//       res.status(500).send({ message: 'Internal Server Error', error });
-//   }
-// });
+    app.get('/articles/publisher/:publisher', async (req, res) => {
+      try {
+        const { publisher } = req.params;
+        const articles = await articlesCollection.find({ publisher }).toArray();
+        res.send(articles);
+      } catch (error) {
+        console.error('Error filtering articles by publisher:', error);
+        res.status(500).send({ message: 'Internal Server Error', error });
+      }
+    });
 
-// Filter articles by publisher and tags
-app.get('/articles/filter', async (req, res) => {
-  try {
-      const { publisher, tags } = req.query;
-      let query = {};
-      if (publisher) {
+    // // Filter articles by publisher and tags
+    app.get('/articles/filter', async (req, res) => {
+      try {
+        const { publisher, tags } = req.query;
+        let query = {};
+        if (publisher) {
           query.publisher = publisher;
-      }
-      if (tags) {
+        }
+        if (tags) {
           query.tags = { $in: tags.split(",") }; // Assuming tags are stored as an array in your database
+        }
+        const articles = await articlesCollection.find(query).toArray();
+        res.send(articles);
+      } catch (error) {
+        console.error('Error filtering articles:', error);
+        res.status(500).send({ message: 'Internal Server Error', error });
       }
-      const articles = await articlesCollection.find(query).toArray();
-      res.send(articles);
-  } catch (error) {
-      console.error('Error filtering articles:', error);
-      res.status(500).send({ message: 'Internal Server Error', error });
-  }
-});
+    });
+
 
 
 
