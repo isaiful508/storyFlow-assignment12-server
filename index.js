@@ -218,7 +218,7 @@ async function run() {
     });
 
 
-    //decline reason
+    //decline status and add declined reason
     app.patch('/articles/:id/declinedStatus', async (req, res) => {
       try {
         const id = req.params.id;
@@ -333,6 +333,20 @@ async function run() {
       }
     });
 
+    //article get by user email
+    
+    app.get('/articles/user/:email', async (req, res) => {
+      try {
+        const email = req.params.email;
+        const query = { authorEmail: email };
+    
+        const result = await articlesCollection.find(query).toArray();
+        res.send(result);
+      } catch (error) {
+        console.error('Error fetching articles by user email:', error);
+        res.status(500).send({ message: 'Internal Server Error', error });
+      }
+    });
 
 
 
