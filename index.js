@@ -334,12 +334,12 @@ async function run() {
     });
 
     //article get by user email
-    
+
     app.get('/articles/user/:email', async (req, res) => {
       try {
         const email = req.params.email;
         const query = { authorEmail: email };
-    
+
         const result = await articlesCollection.find(query).toArray();
         res.send(result);
       } catch (error) {
@@ -348,8 +348,50 @@ async function run() {
       }
     });
 
+    //update article 
+    app.patch('/articles/:id/update', async (req, res) => {
+      try {
+        const id = req.params.id;
+        const filter = { _id: new ObjectId(id) };
+        const updatedArticle = req.body;
+        // const options = { upsert: true };
+        // console.log(updatedArticle);
+        const article = {
+          $set: {
+            title: updatedArticle.title,
+            description: updatedArticle.description,
+            publisher: updatedArticle.publisher,
+            tags: updatedArticle.tags,
+            image: updatedArticle.image,
+            updatedAt: new Date()
+          }
+        };
+    
+        const result = await articlesCollection.updateOne(filter, article);
+        if (result.matchedCount === 0) {
+          return res.status(404).send({ message: 'Article not found' });
+        }
+        res.send({ message: 'Article updated successfully', result });
+      } catch (error) {
+        console.error('Error updating article:', error);
+        res.status(500).send({ message: 'Internal Server Error', error });
+      }
+    });
 
 
+    //get by sorting view counts
+    app.get('/trending-articles', async (req, res) => {
+      try {
+        const articles = await articlesCollection.find({ status: 'approved' })
+          .sort({ views: -1 })
+          .limit(6)  // Limit to top 6 articles
+          .toArray();
+        res.status(200).json(articles);
+      } catch (error) {
+        console.error('Error fetching trending articles:', error);
+        res.status(500).send({ message: 'Internal Server Error', error });
+      }
+    });
 
 
     // Send a ping to confirm a successful connection
