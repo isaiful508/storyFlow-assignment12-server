@@ -7,7 +7,7 @@ const port = process.env.port || 5000;
 
 //middleware
 const corsOptions = {
-  origin: ['http://localhost:5173', 'http://localhost:5174'],
+  origin: ['http://localhost:5173', 'https://story-flow-2024.netlify.app', 'https://storyflow-85a15.web.app'],
   credentials: true,
   optionSuccessStatus: 200,
 }
@@ -378,13 +378,25 @@ async function run() {
       }
     });
 
+    //get by premium
+    app.get('/articles/premium/:isPremium', async (req, res) => {
+      try {
+        const { isPremium } = req.params;
+        const query = { isPremium };
+        const articles = await articlesCollection.find(query).toArray();
+        res.send(articles);
+      } catch (error) {
+        console.error('Error fetching articles by isPremium:', error);
+        res.status(500).send({ message: 'Internal Server Error', error });
+      }
+    });
 
     //get by sorting view counts
     app.get('/trending-articles', async (req, res) => {
       try {
         const articles = await articlesCollection.find({ status: 'approved' })
           .sort({ views: -1 })
-          .limit(6)  // Limit to top 6 articles
+          .limit(6)  
           .toArray();
         res.status(200).json(articles);
       } catch (error) {
