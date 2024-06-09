@@ -1,9 +1,10 @@
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const express = require('express');
+const { addDays, addMinutes, isAfter, parseISO } = require('date-fns');
 const app = express();
 const cors = require('cors');
 require('dotenv').config();
-const stripe= require('stripe')(process.env.STRIPE_SECRET_KEY)
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY)
 const port = process.env.port || 5000;
 
 //middleware
@@ -52,22 +53,22 @@ async function run() {
     // }
 
 
-//payment intent
-app.post('/create-payment-intent', async(req, res)=>{
-  const {price} = req.body;
-  const amount = parseInt(price * 100);
-  console.log('amount in side intentt',amount );
+    //payment intent
+    app.post('/create-payment-intent', async (req, res) => {
+      const { price } = req.body;
+      const amount = parseInt(price * 100);
+      // console.log('amount in side intentt',amount );
 
-  const paymentIntent =await stripe.paymentIntents.create({
-    amount: amount,
-    currency:'usd',
-    payment_method_types:['card']
-  })
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: 'usd',
+        payment_method_types: ['card']
+      })
 
-  res.send({
-    clientSecret: paymentIntent.client_secret
-  })
-})
+      res.send({
+        clientSecret: paymentIntent.client_secret
+      })
+    })
 
 
     app.post('/users', async (req, res) => {
@@ -130,6 +131,65 @@ app.post('/create-payment-intent', async(req, res)=>{
       res.send({ admin })
 
     })
+
+    //get the  uer by uid
+    app.get('/users/:id', async (req, res) => {
+
+      const id = req.params.id;
+
+      try {
+        const user = await userCollection.findOne({ _id: new ObjectId(id) });
+        res.status(200).send(user);
+      } catch (err) {
+        res.status(500).send({ error: 'Error fetching user data', details: err });
+      }
+    });
+
+    //update user taken premium 
+    app.put('/users/:email/premium', async (req, res) => {
+      const { email } = req.params;
+      // console.log(email);
+      const { premiumTaken } = req.body;
+
+      try {
+        const result = await userCollection.updateOne({ email: email }, { $set: { premiumTaken: premiumTaken } });
+        if (result.modifiedCount > 0) {
+          res.status(200).send({ message: 'User premium status updated' });
+        } else {
+          res.status(404).send({ message: 'User not found or premium status not updated' });
+        }
+      } catch (err) {
+        res.status(500).send({ error: 'Error updating user premium status', details: err });
+      }
+    });
+
+    //compare login time
+    app.post('/login', async (req, res) => {
+      const { email } = req.body;
+  
+      try {
+          const user = await userCollection.findOne({ email: email });
+          if (user) {
+              const currentDate = new Date();
+              const premiumExpiryDate = addMinutes(new Date(user.premiumTaken), 1);
+              if (user.premiumTaken && isAfter(currentDate, premiumExpiryDate)) {
+                  await userCollection.updateOne(
+                      { email: email },
+                      { $set: { premiumTaken: null } }
+                  );
+                  user.premiumTaken = null; 
+              }
+              res.status(200).send(user);
+          } else {
+              res.status(404).send({ message: 'User not found' });
+          }
+      } catch (err) {
+          res.status(500).send({ error: 'Error logging in user', details: err });
+      }
+  });
+
+
+
 
 
     //post publisher
@@ -382,7 +442,7 @@ app.post('/create-payment-intent', async(req, res)=>{
             updatedAt: new Date()
           }
         };
-    
+
         const result = await articlesCollection.updateOne(filter, article);
         if (result.matchedCount === 0) {
           return res.status(404).send({ message: 'Article not found' });
@@ -412,7 +472,7 @@ app.post('/create-payment-intent', async(req, res)=>{
       try {
         const articles = await articlesCollection.find({ status: 'approved' })
           .sort({ views: -1 })
-          .limit(6)  
+          .limit(6)
           .toArray();
         res.status(200).json(articles);
       } catch (error) {
