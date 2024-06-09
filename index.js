@@ -9,7 +9,9 @@ const port = process.env.port || 5000;
 
 //middleware
 const corsOptions = {
-  origin: ['http://localhost:5173', 'https://story-flow-2024.netlify.app', 'https://storyflow-85a15.web.app'],
+  origin: ['http://localhost:5173', 'https://story-flow-2024.netlify.app', 'https://storyflow-85a15.web.app',
+    'https://storyflow-85a15.firebaseapp.com'
+  ],
   credentials: true,
   optionSuccessStatus: 200,
 }
@@ -132,7 +134,7 @@ async function run() {
 
     })
 
-    //get the  uer by uid
+    //get the  uer by id
     app.get('/users/:id', async (req, res) => {
 
       const id = req.params.id;
@@ -145,7 +147,7 @@ async function run() {
       }
     });
 
-    //update user taken premium 
+    //update user after taken premium 
     app.put('/users/:email/premium', async (req, res) => {
       const { email } = req.params;
       // console.log(email);
@@ -166,30 +168,27 @@ async function run() {
     //compare login time
     app.post('/login', async (req, res) => {
       const { email } = req.body;
-  
+
       try {
-          const user = await userCollection.findOne({ email: email });
-          if (user) {
-              const currentDate = new Date();
-              const premiumExpiryDate = addMinutes(new Date(user.premiumTaken), 1);
-              if (user.premiumTaken && isAfter(currentDate, premiumExpiryDate)) {
-                  await userCollection.updateOne(
-                      { email: email },
-                      { $set: { premiumTaken: null } }
-                  );
-                  user.premiumTaken = null; 
-              }
-              res.status(200).send(user);
-          } else {
-              res.status(404).send({ message: 'User not found' });
+        const user = await userCollection.findOne({ email: email });
+        if (user) {
+          const currentDate = new Date();
+          const premiumExpiryDate = addMinutes(new Date(user.premiumTaken), 1);
+          if (user.premiumTaken && isAfter(currentDate, premiumExpiryDate)) {
+            await userCollection.updateOne(
+              { email: email },
+              { $set: { premiumTaken: null } }
+            );
+            user.premiumTaken = null;
           }
+          res.status(200).send(user);
+        } else {
+          res.status(404).send({ message: 'User not found' });
+        }
       } catch (err) {
-          res.status(500).send({ error: 'Error logging in user', details: err });
+        res.status(500).send({ error: 'Error logging in user', details: err });
       }
-  });
-
-
-
+    });
 
 
     //post publisher
@@ -213,6 +212,34 @@ async function run() {
       const result = await publishersCollection.find().toArray()
       res.send(result);
     })
+
+    // Check if user can add an article
+app.get('/can-add-article/:email', async (req, res) => {
+  try {
+      const email = req.params.email;
+
+      const user = await userCollection.findOne({ email: email });
+
+      if (user.premiumTaken && user.premiumTaken !== 'null') {
+      
+          res.send({ allowed: true });
+      } else {
+         
+          const articles = await articlesCollection.find({ authorEmail: email }).toArray();
+
+          if (articles.length > 0) {
+             
+              res.send({ allowed: false });
+          } else {
+             
+              res.send({ allowed: true });
+          }
+      }
+  } catch (error) {
+      console.error('Error checking user:', error);
+      res.status(500).send({ message: 'Internal Server Error', error });
+  }
+});
 
     //post article
     app.post('/articles', async (req, res) => {
@@ -328,6 +355,54 @@ async function run() {
       }
     });
 
+
+    // get  to search articles by title
+    app.get('/articles/search/:title', async (req, res) => {
+      try {
+        const { title } = req.params;
+        const query = { title: { $regex: title, $options: 'i' } };
+        const articles = await articlesCollection.find(query).toArray();
+        res.send(articles);
+      } catch (error) {
+        console.error('Error searching articles by title:', error);
+        res.status(500).send({ message: 'Internal Server Error', error });
+      }
+    });
+
+    //filetr by publisher
+
+    app.get('/articles/publisher/:publisher', async (req, res) => {
+      try {
+        const { publisher } = req.params;
+        const articles = await articlesCollection.find({ publisher }).toArray();
+        res.send(articles);
+      } catch (error) {
+        console.error('Error filtering articles by publisher:', error);
+        res.status(500).send({ message: 'Internal Server Error', error });
+      }
+    });
+
+    // // Filter articles by publisher and tags
+    app.get('/articles/filter', async (req, res) => {
+      try {
+        const { publisher, tags } = req.query;
+        let query = {};
+        if (publisher) {
+          query.publisher = publisher;
+        }
+        if (tags) {
+          query.tags = { $in: tags.split(",") }; // Assuming tags are stored as an array in your database
+        }
+        const articles = await articlesCollection.find(query).toArray();
+        res.send(articles);
+      } catch (error) {
+        console.error('Error filtering articles:', error);
+        res.status(500).send({ message: 'Internal Server Error', error });
+      }
+    });
+
+
+
     //get article by id
     app.get('/articles/:id', async (req, res) => {
       try {
@@ -362,52 +437,11 @@ async function run() {
       }
     });
 
-    // get  to search articles by title
-
-    app.get('/articles/search/:title', async (req, res) => {
-      try {
-        const { title } = req.params;
-        const query = { title: { $regex: title, $options: 'i' } }; // Case-insensitive search
-        const articles = await articlesCollection.find(query).toArray();
-        res.send(articles);
-      } catch (error) {
-        console.error('Error searching articles by title:', error);
-        res.status(500).send({ message: 'Internal Server Error', error });
-      }
-    });
 
 
-    //filetr by publisher
 
-    app.get('/articles/publisher/:publisher', async (req, res) => {
-      try {
-        const { publisher } = req.params;
-        const articles = await articlesCollection.find({ publisher }).toArray();
-        res.send(articles);
-      } catch (error) {
-        console.error('Error filtering articles by publisher:', error);
-        res.status(500).send({ message: 'Internal Server Error', error });
-      }
-    });
 
-    // // Filter articles by publisher and tags
-    app.get('/articles/filter', async (req, res) => {
-      try {
-        const { publisher, tags } = req.query;
-        let query = {};
-        if (publisher) {
-          query.publisher = publisher;
-        }
-        if (tags) {
-          query.tags = { $in: tags.split(",") }; // Assuming tags are stored as an array in your database
-        }
-        const articles = await articlesCollection.find(query).toArray();
-        res.send(articles);
-      } catch (error) {
-        console.error('Error filtering articles:', error);
-        res.status(500).send({ message: 'Internal Server Error', error });
-      }
-    });
+
 
     //article get by user email
 
