@@ -118,7 +118,7 @@ async function run() {
     });
 
     //get user from database
-    app.get('/users', verifyToken,verifyAdmin, async (req, res) => {
+    app.get('/users', async (req, res) => {
       const result = await userCollection.find().toArray()
       res.send(result);
     })
@@ -157,12 +157,12 @@ async function run() {
     });
 
     //search admin by email
-    app.get('/users/admin/:email', verifyToken,verifyAdmin, async (req, res) => {
+    app.get('/users/admin/:email', async (req, res) => {
       const email = req.params.email;
 
-      if (email !== req.decoded.email) {
-        return res.status(403).send({ message: 'forbidden access' })
-      }
+      // if (email !== req.decoded.email) {
+      //   return res.status(403).send({ message: 'forbidden access' })
+      // }
 
       const query = { email: email };
       const user = await userCollection.findOne(query);
@@ -189,7 +189,7 @@ async function run() {
     });
 
     //update user after taken premium 
-    app.put('/users/:email/premium',verifyToken,verifyAdmin, async (req, res) => {
+    app.put('/users/:email/premium',verifyToken, async (req, res) => {
       const { email } = req.params;
       // console.log(email);
       const { premiumTaken } = req.body;
@@ -207,7 +207,7 @@ async function run() {
     });
 
     //compare login time
-    app.post('/login',verifyToken, async (req, res) => {
+    app.post('/login', async (req, res) => {
       const { email } = req.body;
 
       try {
@@ -248,7 +248,7 @@ async function run() {
     });
 
     //get publisher
-    app.get('/publishers',verifyToken, async (req, res) => {
+    app.get('/publishers', async (req, res) => {
 
       const result = await publishersCollection.find().toArray()
       res.send(result);
@@ -345,7 +345,7 @@ async function run() {
     //delete article 
 
 
-    app.delete('/articles/:id',verifyToken,verifyAdmin, async (req, res) => {
+    app.delete('/articles/:id',verifyToken, async (req, res) => {
       try {
         const { id } = req.params;
         const result = await articlesCollection.deleteOne({ _id: new ObjectId(id) });
