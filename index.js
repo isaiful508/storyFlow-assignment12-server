@@ -383,57 +383,24 @@ async function run() {
 
 
 
-
-    //articles get by status
-    app.get('/articles/status/:status',verifyToken, async (req, res) => {
+    // Filter articles by title, publisher, tags, and status
+    app.get('/articles/search',verifyToken, async (req, res) => {
       try {
-        const { status } = req.params;
-        const articles = await articlesCollection.find({ status }).toArray();
-        res.send(articles);
-      } catch (error) {
-        console.error('Error fetching articles by status:', error);
-        res.status(500).send({ message: 'Internal Server Error', error });
-      }
-    });
-
-
-    // get  to search articles by title
-    app.get('/articles/search/:title', async (req, res) => {
-      try {
-        const { title } = req.params;
-        const query = { title: { $regex: title, $options: 'i' } };
-        const articles = await articlesCollection.find(query).toArray();
-        res.send(articles);
-      } catch (error) {
-        console.error('Error searching articles by title:', error);
-        res.status(500).send({ message: 'Internal Server Error', error });
-      }
-    });
-
-    //filetr by publisher
-
-    app.get('/articles/publisher/:publisher',verifyToken, async (req, res) => {
-      try {
-        const { publisher } = req.params;
-        const articles = await articlesCollection.find({ publisher }).toArray();
-        res.send(articles);
-      } catch (error) {
-        console.error('Error filtering articles by publisher:', error);
-        res.status(500).send({ message: 'Internal Server Error', error });
-      }
-    });
-
-    // // Filter articles by publisher and tags
-    app.get('/articles/filter', async (req, res) => {
-      try {
-        const { publisher, tags } = req.query;
-        let query = {};
+        const { title, publisher, tags, status = 'approved' } = req.query; // default status to 'approved'
+        let query = { status }; // ensure we are only fetching approved articles by default
+    
+        if (title) {
+          query.title = { $regex: title, $options: 'i' };
+        }
+    
         if (publisher) {
           query.publisher = publisher;
         }
+    
         if (tags) {
-          query.tags = { $in: tags.split(",") }; // Assuming tags are stored as an array in your database
+          query.tags = { $in: tags.split(",") }; 
         }
+    
         const articles = await articlesCollection.find(query).toArray();
         res.send(articles);
       } catch (error) {
@@ -441,7 +408,6 @@ async function run() {
         res.status(500).send({ message: 'Internal Server Error', error });
       }
     });
-
 
 
     //get article by id
