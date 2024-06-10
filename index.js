@@ -81,7 +81,7 @@ async function run() {
 
 
     //payment intent
-    app.post('/create-payment-intent', async (req, res) => {
+    app.post('/create-payment-intent',verifyToken, async (req, res) => {
       const { price } = req.body;
       const amount = parseInt(price * 100);
       // console.log('amount in side intentt',amount );
@@ -124,7 +124,7 @@ async function run() {
     })
 
     //make admin 
-    app.patch('/users/admin/:id', async (req, res) => {
+    app.patch('/users/admin/:id', verifyToken,verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) }
       const updatedDoc = {
@@ -139,8 +139,25 @@ async function run() {
 
     })
 
+    //delete user
+    app.delete('/users/:id',verifyToken, verifyAdmin, async (req, res) => {
+      try {
+        const { id } = req.params;
+        const result = await userCollection.deleteOne({ _id: new ObjectId(id) });
+
+        if (result.deletedCount === 1) {
+          res.send({ message: 'User deleted successfully', deletedCount: 1 });
+        } else {
+          res.status(404).send({ message: 'User not found', deletedCount: 0 });
+        }
+      } catch (error) {
+        console.error('Error deleting user:', error);
+        res.status(500).send({ message: 'Internal Server Error', error });
+      }
+    });
+
     //search admin by email
-    app.get('/users/admin/:email', verifyToken, async (req, res) => {
+    app.get('/users/admin/:email', verifyToken,verifyAdmin, async (req, res) => {
       const email = req.params.email;
 
       if (email !== req.decoded.email) {
@@ -159,7 +176,7 @@ async function run() {
     })
 
     //get the  uer by id
-    app.get('/users/:id', async (req, res) => {
+    app.get('/users/:id',verifyToken,verifyAdmin, async (req, res) => {
 
       const id = req.params.id;
 
@@ -172,7 +189,7 @@ async function run() {
     });
 
     //update user after taken premium 
-    app.put('/users/:email/premium', async (req, res) => {
+    app.put('/users/:email/premium',verifyToken,verifyAdmin, async (req, res) => {
       const { email } = req.params;
       // console.log(email);
       const { premiumTaken } = req.body;
@@ -190,7 +207,7 @@ async function run() {
     });
 
     //compare login time
-    app.post('/login', async (req, res) => {
+    app.post('/login',verifyToken, async (req, res) => {
       const { email } = req.body;
 
       try {
@@ -216,7 +233,7 @@ async function run() {
 
 
     //post publisher
-    app.post('/publishers', async (req, res) => {
+    app.post('/publishers',verifyToken,verifyAdmin, async (req, res) => {
       try {
         const publisher = req.body;
         // console.log(user);
@@ -231,14 +248,14 @@ async function run() {
     });
 
     //get publisher
-    app.get('/publishers', async (req, res) => {
+    app.get('/publishers',verifyToken, async (req, res) => {
 
       const result = await publishersCollection.find().toArray()
       res.send(result);
     })
 
     // Check if user can add an article
-    app.get('/can-add-article/:email', async (req, res) => {
+    app.get('/can-add-article/:email',verifyToken, async (req, res) => {
       try {
         const email = req.params.email;
 
@@ -266,7 +283,7 @@ async function run() {
     });
 
     //post article
-    app.post('/articles', async (req, res) => {
+    app.post('/articles',verifyToken, async (req, res) => {
       try {
         const article = req.body;
         article.postedDate = new Date();
@@ -282,14 +299,14 @@ async function run() {
     });
 
     //get all articles
-    app.get('/articles', async (req, res) => {
+    app.get('/articles',verifyToken,verifyAdmin, async (req, res) => {
       const result = await articlesCollection.find().toArray()
       res.send(result);
 
     })
 
     //update article status
-    app.patch('/articles/:id/status', async (req, res) => {
+    app.patch('/articles/:id/status',verifyToken,verifyAdmin, async (req, res) => {
       try {
         const { id } = req.params;
         const { status } = req.body;
@@ -308,7 +325,7 @@ async function run() {
 
     // update premium
 
-    app.patch('/articles/:id/premium', async (req, res) => {
+    app.patch('/articles/:id/premium',verifyToken,verifyAdmin, async (req, res) => {
       const { id } = req.params;
       const { isPremium } = req.body;
       try {
@@ -328,7 +345,7 @@ async function run() {
     //delete article 
 
 
-    app.delete('/articles/:id', async (req, res) => {
+    app.delete('/articles/:id',verifyToken,verifyAdmin, async (req, res) => {
       try {
         const { id } = req.params;
         const result = await articlesCollection.deleteOne({ _id: new ObjectId(id) });
@@ -346,7 +363,7 @@ async function run() {
 
 
     //decline status and add declined reason
-    app.patch('/articles/:id/declinedStatus', async (req, res) => {
+    app.patch('/articles/:id/declinedStatus',verifyToken,verifyAdmin, async (req, res) => {
       try {
         const id = req.params.id;
         const { status, declinedReason } = req.body;
@@ -368,7 +385,7 @@ async function run() {
 
 
     //articles get by status
-    app.get('/articles/status/:status', async (req, res) => {
+    app.get('/articles/status/:status',verifyToken, async (req, res) => {
       try {
         const { status } = req.params;
         const articles = await articlesCollection.find({ status }).toArray();
@@ -395,7 +412,7 @@ async function run() {
 
     //filetr by publisher
 
-    app.get('/articles/publisher/:publisher', async (req, res) => {
+    app.get('/articles/publisher/:publisher',verifyToken, async (req, res) => {
       try {
         const { publisher } = req.params;
         const articles = await articlesCollection.find({ publisher }).toArray();
@@ -428,7 +445,7 @@ async function run() {
 
 
     //get article by id
-    app.get('/articles/:id', async (req, res) => {
+    app.get('/articles/:id',verifyToken, async (req, res) => {
       try {
         const { id } = req.params;
         const article = await articlesCollection.findOne({ _id: new ObjectId(id) });
@@ -444,7 +461,7 @@ async function run() {
     });
 
     //update by view count
-    app.patch('/articles/:id/view', async (req, res) => {
+    app.patch('/articles/:id/view',verifyToken, async (req, res) => {
       try {
         const { id } = req.params;
         const result = await articlesCollection.updateOne(
@@ -469,7 +486,7 @@ async function run() {
 
     //article get by user email
 
-    app.get('/articles/user/:email', async (req, res) => {
+    app.get('/articles/user/:email',verifyToken, async (req, res) => {
       try {
         const email = req.params.email;
         const query = { authorEmail: email };
@@ -483,7 +500,7 @@ async function run() {
     });
 
     //update article 
-    app.patch('/articles/:id/update', async (req, res) => {
+    app.patch('/articles/:id/update',verifyToken, async (req, res) => {
       try {
         const id = req.params.id;
         const filter = { _id: new ObjectId(id) };
@@ -513,7 +530,7 @@ async function run() {
     });
 
     //get by premium
-    app.get('/articles/premium/:isPremium', async (req, res) => {
+    app.get('/articles/premium/:isPremium',verifyToken, async (req, res) => {
       try {
         const { isPremium } = req.params;
         const query = { isPremium };
