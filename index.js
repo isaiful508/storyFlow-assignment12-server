@@ -2,6 +2,7 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const express = require('express');
 const { addDays, addMinutes, isAfter, parseISO } = require('date-fns');
 const app = express();
+const jwt = require('jsonwebtoken');
 const cors = require('cors');
 require('dotenv').config();
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY)
@@ -40,19 +41,43 @@ async function run() {
     const articlesCollection = client.db('storyFlow').collection('articles');
 
 
+    //jwt related api
+    app.post('/jwt', async (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: '1h'
+      })
+      res.send({ token })
+    })
 
     //middlewares
+    const verifyToken = (req, res, next) => {
+      console.log('inside verify token', req.headers.authorization);
+      if (!req.headers.authorization) {
+        return res.status(401).send({ message: 'unauthorized access ' })
+      }
+      const token = req.headers.authorization.split(' ')[1];
+      jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+        if (err) {
+          return res.status(401).send({ message: 'unauthorized access' })
+        }
+        req.decoded = decoded;
+        next();
+      })
+    }
+//use verify  admin after verify token
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded.email
+      const query = { email: email }
+      const user = await userCollection.findOne(query);
+      const isAdmin = user?.role === 'admin';
+      if (!isAdmin) {
+        return res.status(403).send({ message: 'forbidden access' })
+      }
+      next()
+    }
 
-    // const verifyAdmin = async (req, res, next) => {
-    //   const email = req.decoded.email
-    //   const query = { email: email }
-    //   const user = await userCollection.findOne(query);
-    //   const isAdmin = user?.role === 'admin';
-    //   if (!isAdmin) {
-    //     return res.status(403).send({ message: 'forbidden access' })
-    //   }
-    //   next()
-    // }
+
 
 
     //payment intent
@@ -93,8 +118,7 @@ async function run() {
     });
 
     //get user from database
-    app.get('/users', async (req, res) => {
-
+    app.get('/users', verifyToken,verifyAdmin, async (req, res) => {
       const result = await userCollection.find().toArray()
       res.send(result);
     })
@@ -116,12 +140,12 @@ async function run() {
     })
 
     //search admin by email
-    app.get('/users/admin/:email', async (req, res) => {
+    app.get('/users/admin/:email', verifyToken, async (req, res) => {
       const email = req.params.email;
 
-      // if (email !== req.decoded.email) {
-      //   return res.status(403).send({ message: 'forbidden access' })
-      // }
+      if (email !== req.decoded.email) {
+        return res.status(403).send({ message: 'forbidden access' })
+      }
 
       const query = { email: email };
       const user = await userCollection.findOne(query);
@@ -214,32 +238,32 @@ async function run() {
     })
 
     // Check if user can add an article
-app.get('/can-add-article/:email', async (req, res) => {
-  try {
-      const email = req.params.email;
+    app.get('/can-add-article/:email', async (req, res) => {
+      try {
+        const email = req.params.email;
 
-      const user = await userCollection.findOne({ email: email });
+        const user = await userCollection.findOne({ email: email });
 
-      if (user.premiumTaken && user.premiumTaken !== 'null') {
-      
+        if (user.premiumTaken && user.premiumTaken !== 'null') {
+
           res.send({ allowed: true });
-      } else {
-         
+        } else {
+
           const articles = await articlesCollection.find({ authorEmail: email }).toArray();
 
           if (articles.length > 0) {
-             
-              res.send({ allowed: false });
+
+            res.send({ allowed: false });
           } else {
-             
-              res.send({ allowed: true });
+
+            res.send({ allowed: true });
           }
+        }
+      } catch (error) {
+        console.error('Error checking user:', error);
+        res.status(500).send({ message: 'Internal Server Error', error });
       }
-  } catch (error) {
-      console.error('Error checking user:', error);
-      res.status(500).send({ message: 'Internal Server Error', error });
-  }
-});
+    });
 
     //post article
     app.post('/articles', async (req, res) => {
